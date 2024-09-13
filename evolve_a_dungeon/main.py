@@ -13,18 +13,16 @@ import pygame
 import pygame, json, random, glob, ast, sys, os, math
 from pygame.locals import *
 
-WIN_WIDTH = 900
-WIN_HEIGHT = 600
+WIN_WIDTH = 900     # 180 tiles across
+WIN_HEIGHT = 600    # 120 tiles down
 WIN_SCALE = 2
-
 TILE_SIZE = 5
-# 180 tiles across
-# 120 tiles down
 
 # ASSETS =====================================
 
 i_tile = pygame.image.load('./tile.png')
 i_dirt = pygame.image.load('./dirt.png')
+i_debug = pygame.image.load('./debug.png')
 
 # HELPER DATA =====================================
 
@@ -39,16 +37,7 @@ dt = frame_end - frame_start
 
 playing = True
 
-# each cell is a free space, wall, starting point, exit, monster, or treasure
-    # walls and free spaces make up rooms
-        # rooms are dictated by 1) a top left corner 2) dimensions
-    # within those rooms we can place the monsters and treasure
-    # two walls are replaced with an entrance and an exit
-    # the rooms are connected ******** this one is important - how are they connected? in order? or as a complete graph? ************
-gene = {
-    'walls' : [],
-    'rooms' : []
-}
+# IMPORTANT : never forget to convert between pixels and tiles as needed
 
 # HELPER FUNCTIONS =====================================
 
@@ -57,42 +46,64 @@ gene = {
 
 class Room() :
     def __init__(self, corner : tuple, dims : tuple) -> None:
-        self.corner : tuple = corner
-        self.dims   : tuple = dims
+        self.corner : tuple = corner    # in TILES - converted from px if needed
+        self.dims   : tuple = dims      # in TILES - converted from px if needed
 
-def generateGenotype() -> list :
-    # a room is a pair of coordinates and a pair of dimensions 
+    def conflictsWith(self, room : 'Room') :
+        pass
 
-    # GENERATE ENTRANCE ROOM
-    # decide which quadrant
-    entry_quad = random.randrange(0,3)
-    exit_quad = (entry_quad + 2) % 4
-    quads = {
-        0 : Room((0, 0), (90, 60)) ,
-        1 : Room((int((WIN_WIDTH / 2) / TILE_SIZE), 0), (90, 60)) ,
-        2 : Room((int((WIN_WIDTH / 2) / TILE_SIZE), int((WIN_HEIGHT / 2) / TILE_SIZE)), (90, 60)) ,
-        3 : Room((0, int((WIN_HEIGHT / 2) / TILE_SIZE)), (90, 60)) 
-    }
+def checkRoomOverlap(r1 : Room, r2 : Room) -> bool:
+    # subtracting 1 to make the bounding box a little bit bigger - that way, no rooms will be directly kissing either
+    rect1 = pygame.Rect(r1.corner[0] * TILE_SIZE, r1.corner[1] * TILE_SIZE, r1.dims[0] * TILE_SIZE, r1.dims[1] * TILE_SIZE)
+    rect2 = pygame.Rect(r2.corner[0] * TILE_SIZE, r2.corner[1] * TILE_SIZE, r2.dims[0] * TILE_SIZE, r2.dims[1] * TILE_SIZE)
+    
+    if rect1.collidepoint(r1.corner) :
+        print("corner containment")
 
-    # place a room of any size somewhere in the middle rectangle
-    x_rand = math.floor(random.randrange(225, 775) / 10) * 10
-    y_rand = math.floor(random.randrange(150, 450) / 10) * 10
+    if rect1.colliderect(rect2) :
+        return True
+    
+    return False
 
-    entry_room = Room(
-        (int(x_rand / TILE_SIZE), int(y_rand / TILE_SIZE)),
-        (20, 10)
+
+# this is the "first level of translation" - we convert our notion of a room, and put it into code
+# in this case, a top-left corner and a pair of dimensions are our notion of a room, and are easily put into code.
+# tolerance - parameter to determine how many failed attempts at placing rooms are allowed before terminating loop
+def generateGenotype(tolerance : int) -> list :
+    x_rand = int(math.floor(random.randrange(int(WIN_WIDTH / 4), int((WIN_WIDTH  * 3) / 4))) / TILE_SIZE)
+    y_rand = int(math.floor(random.randrange(int(WIN_HEIGHT / 4), int((WIN_HEIGHT  * 3) / 4))) / TILE_SIZE)
+    
+    central_room = Room(
+        (x_rand, y_rand),
+        (30, 30) # NOTE : 30x30 is the largest room size that doesn't cause bounding errors, given the size of the middle room
     )
 
-    return [entry_room]
+    # TODO : any new room will need to be compared against every other room that already exists 
+    # this is probably inefficient at first go, but fuck it we ball
+    genotype : list[Room] = [central_room]
 
-# IMPORTANT : never forget to convert between pixels and tiles as needed
+    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
+    t = tolerance
+    while t > 0 :
+        x_dim = math.floor(random.randrange(10, 20))
+        y_dim = math.floor(random.randrange(10, 20))
+        x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
+        y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
+        r = Room((x_corner, y_corner), (x_dim, y_dim))
 
-# right now, the genotype that is getting passed in is a list of Room objects
-# where 0 is the top left corner and 1 is the dimensions spanning from that corner
+        for room in genotype :
+            if checkRoomOverlap(r, room) :
+                print(r.corner, r.dims, 'pass')
+                t -= 1
+            else :
+                genotype.append(r)
+    
+    return genotype
+
 def outputPhenotype(genotype : list) :
     # each cell represents a 5x5 tile
     phenotype = [[0 for x in range(int(WIN_WIDTH / TILE_SIZE))] for y in range(int(WIN_HEIGHT / TILE_SIZE))]
-    
+
     for room in genotype :        
         for i in range(room.dims[1]) : 
             for j in range(room.dims[0]) :
@@ -103,8 +114,8 @@ def outputPhenotype(genotype : list) :
 
 # MAIN GAME LOOP =====================================
 
-gene = generateGenotype()
-fein = outputPhenotype(gene)
+gene = generateGenotype(100)
+phenotype = outputPhenotype(gene)
 
 while playing:
     raw_window.fill((0,0,0))
@@ -117,18 +128,13 @@ while playing:
             if event.key == K_ESCAPE:
                 playing = False
 
-
-
-    for i in range(len(fein)) :
-        for j in range(len(fein[0])) :
-            if fein[i][j] == 0 :
-                # pygame.draw.rect(raw_window, (0,200,0), pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+    # i and j represent the tile coord numbers - hence they need to be mutiplied by T_S
+    for i in range(len(phenotype)) :
+        for j in range(len(phenotype[0])) :
+            if phenotype[i][j] == 0 :
                 raw_window.blit(i_tile, pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-            else :
-                # pygame.draw.rect(raw_window, (0,200,0), pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-                raw_window.blit(i_dirt, pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-
-    # pygame.draw.rect(raw_window, (0,0,100), pygame.Rect(225, 150, 450, 300))
+            # else :
+            #     raw_window.blit(i_dirt, pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 
     scaled_window = pygame.transform.scale(raw_window, display_window.get_size())
     display_window.blit(scaled_window, (0,0))
