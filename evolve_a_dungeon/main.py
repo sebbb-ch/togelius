@@ -49,9 +49,10 @@ class Room() :
         self.corner : tuple = corner    # in TILES - converted from px if needed
         self.dims   : tuple = dims      # in TILES - converted from px if needed
 
+    # NOTE: int values are added to prevent rooms from spawing directly adjacent each other
     def containsPoint(self, point : tuple) -> bool: 
-        x_range = range(self.corner[0], self.corner[0] + self.dims[0])
-        y_range = range(self.corner[1], self.corner[1] + self.dims[1])
+        x_range = range(self.corner[0] - 1, self.corner[0] + self.dims[0] + 2)
+        y_range = range(self.corner[1] - 1, self.corner[1] + self.dims[1] + 2)
         if (point[0] in x_range) and (point[1] in y_range) :
             return True
         return False
@@ -110,40 +111,43 @@ def generateGenotype(tolerance : int) -> list :
     # this is probably inefficient at first go, but fuck it we ball
     genotype : list[Room] = [central_room]
 
-    for i in range(10) :
+    # for i in range(10) :
+    #     x_dim = math.floor(random.randrange(10, 20))
+    #     y_dim = math.floor(random.randrange(10, 20))
+    #     x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
+    #     y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
+    #     protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
+    #     print(len(genotype))
+    #     # I KNOW MY MISTAKE - IT WAS ADDING DUPLICATE ROOMS!!!!
+    #     # EVERY TIME A NON CONFLICT WAS ENCOUNTERED IT ADDED THE SAME ROOM
+    #     safe = True
+    #     for room in genotype :
+    #         if room.conflictsWith(protoroom) :
+    #             safe = False
+    #             break
+        
+    #     if safe :
+    #         genotype.append(protoroom)
+
+
+    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
+    t = tolerance
+    while t > 0 :
         x_dim = math.floor(random.randrange(10, 20))
         y_dim = math.floor(random.randrange(10, 20))
         x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
         y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
         protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
-        print(len(genotype))
-        # I KNOW MY MISTAKE - IT WAS ADDING DUPLICATE ROOMS!!!!
-        # EVERY TIME A NON CONFLICT WAS ENCOUNTERED IT ADDED THE SAME ROOM
         safe = True
         for room in genotype :
-            if room.conflictsWith(protoroom) :
+            if protoroom.conflictsWith(room) :
                 safe = False
+                t -= 1
                 break
-        
         if safe :
             genotype.append(protoroom)
-
-
-    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
-    # t = tolerance
-    # while t > 0 :
-    #     x_dim = math.floor(random.randrange(10, 20))
-    #     y_dim = math.floor(random.randrange(10, 20))
-    #     x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
-    #     y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
-    #     r = Room((x_corner, y_corner), (x_dim, y_dim))
-
-    #     for room in genotype :
-    #         if r.conflictsWith(room) :
-    #             t -= 1
-    #         else :
-    #             genotype.append(r)
     
+    print(len(genotype))
     return genotype
 
 def outputPhenotype(genotype : list) :
@@ -159,7 +163,7 @@ def outputPhenotype(genotype : list) :
 
 # MAIN GAME LOOP =====================================
 
-gene = generateGenotype(100)
+gene = generateGenotype(50)
 phenotype = outputPhenotype(gene)
 
 while playing:
