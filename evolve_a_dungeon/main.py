@@ -41,6 +41,7 @@ dt = frame_end - frame_start
 playing = True
 
 # IMPORTANT : never forget to convert between pixels and tiles as needed
+# NOTE: IS THERE SOME STRATEGY THAT WOULD ALLOW US TO PLACE A BUNCH OF ROOMS DOWN AND THEN CULL?
 
 # HELPER FUNCTIONS =====================================
 
@@ -80,14 +81,14 @@ class Room() :
         # ================================
         point = None
         if relative_direction == "NW" : # check foreign's bottom right corner for containment
-            point = (room.corner[0] + room.dims[0], room.corner[1] + room.dims[1])
+            point = (room.corner[0] + room.dims[0] - 1, room.corner[1] + room.dims[1] - 1)
         if relative_direction == "NE" : # check foreign's bottom left corner for containment
-            point = (room.corner[0], room.corner[1] + room.dims[1])
+            point = (room.corner[0], room.corner[1] + room.dims[1] - 1)
         if relative_direction == "SW" : # check foreign's top right corner for containment
-            point = (room.corner[0] + room.dims[0], room.corner[1])
+            point = (room.corner[0] + room.dims[0] - 1, room.corner[1])
         # this should be superfluous!!!
         if relative_direction == "SE" : # check foreign's top left corner for containment
-            point = (room.corner[0] + room.dims[0], room.corner[1] + room.dims[1])
+            point = (room.corner[0] + room.dims[0] - 1, room.corner[1] + room.dims[1] - 1) 
 
         if self.containsPoint(point) :
             return True
@@ -111,41 +112,44 @@ def generateGenotype(tolerance : int) -> list :
     # this is probably inefficient at first go, but fuck it we ball
     genotype : list[Room] = [central_room]
 
-    # for i in range(10) :
-    #     x_dim = math.floor(random.randrange(10, 20))
-    #     y_dim = math.floor(random.randrange(10, 20))
-    #     x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
-    #     y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
-    #     protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
-    #     print(len(genotype))
-    #     # I KNOW MY MISTAKE - IT WAS ADDING DUPLICATE ROOMS!!!!
-    #     # EVERY TIME A NON CONFLICT WAS ENCOUNTERED IT ADDED THE SAME ROOM
-    #     safe = True
-    #     for room in genotype :
-    #         if room.conflictsWith(protoroom) :
-    #             safe = False
-    #             break
-        
-    #     if safe :
-    #         genotype.append(protoroom)
-
-
-    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
-    t = tolerance
-    while t > 0 :
+    for i in range(30) :
         x_dim = math.floor(random.randrange(10, 20))
         y_dim = math.floor(random.randrange(10, 20))
         x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
         y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
         protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
+        print(len(genotype))
+        # I KNOW MY MISTAKE - IT WAS ADDING DUPLICATE ROOMS!!!!
+        # EVERY TIME A NON CONFLICT WAS ENCOUNTERED IT ADDED THE SAME ROOM
         safe = True
         for room in genotype :
-            if protoroom.conflictsWith(room) :
+            # NOTE: CHECKING THIS BOTH WAYS FIXES THE ISSUES WITH THE STRAY OVERLAPPING ROOMS
+            # SOMETIMES, IF A BIGGER ROOM WAS ADDED WHOSE EXTREMITIES SATISFIED OUR CURRENT CHECKS
+            # IT MIGHT STILL OVERLAP WITH A EXISTING ROOM
+            if room.conflictsWith(protoroom) or protoroom.conflictsWith(room) :
                 safe = False
-                t -= 1
                 break
+        
         if safe :
             genotype.append(protoroom)
+
+
+    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
+    # t = tolerance
+    # while t > 0 :
+    #     x_dim = math.floor(random.randrange(10, 20))
+    #     y_dim = math.floor(random.randrange(10, 20))
+    #     x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
+    #     y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
+    #     protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
+    #     safe = True
+    #     for room in genotype :
+    #         if protoroom.conflictsWith(room) :
+    #             safe = False
+    #             t -= 1
+    #             break
+    #     if safe :
+    #         genotype.append(protoroom)
     
     print(len(genotype))
     return genotype
@@ -159,11 +163,16 @@ def outputPhenotype(genotype : list) :
             for j in range(room.dims[0]) :
                 phenotype[room.corner[1] + i][room.corner[0] + j] = 1
 
+    # NOTE: temporarily adding note on the top left corners of rooms
+    for room in genotype :
+        phenotype[room.corner[1]][room.corner[0]] = 2
+        phenotype[room.corner[1] + room.dims[1] - 1][room.corner[0] + room.dims[0] - 1] = 2
+
     return phenotype
 
 # MAIN GAME LOOP =====================================
 
-gene = generateGenotype(50)
+gene = generateGenotype(20)
 phenotype = outputPhenotype(gene)
 
 while playing:
@@ -182,8 +191,11 @@ while playing:
         for j in range(len(phenotype[0])) :
             if phenotype[i][j] == 0 :
                 raw_window.blit(i_tile, pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-            else :
+            elif phenotype[i][j] == 1:
                 raw_window.blit(i_dirt, pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+            elif phenotype[i][j] == 2:
+                raw_window.blit(i_debug, pygame.Rect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+
 
     scaled_window = pygame.transform.scale(raw_window, display_window.get_size())
     display_window.blit(scaled_window, (0,0))
