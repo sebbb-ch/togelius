@@ -18,7 +18,7 @@ WIN_HEIGHT = 600    # 120 tiles down
 WIN_SCALE = 2
 TILE_SIZE = 5
 
-mac = True
+mac = False
 if mac : WIN_SCALE = 1
 
 # ASSETS =====================================
@@ -112,44 +112,22 @@ def generateGenotype(tolerance : int) -> list :
     # this is probably inefficient at first go, but fuck it we ball
     genotype : list[Room] = [central_room]
 
-    for i in range(30) :
+    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
+    t = tolerance
+    while t > 0 :
         x_dim = math.floor(random.randrange(10, 20))
         y_dim = math.floor(random.randrange(10, 20))
         x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
         y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
         protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
-        print(len(genotype))
-        # I KNOW MY MISTAKE - IT WAS ADDING DUPLICATE ROOMS!!!!
-        # EVERY TIME A NON CONFLICT WAS ENCOUNTERED IT ADDED THE SAME ROOM
         safe = True
         for room in genotype :
-            # NOTE: CHECKING THIS BOTH WAYS FIXES THE ISSUES WITH THE STRAY OVERLAPPING ROOMS
-            # SOMETIMES, IF A BIGGER ROOM WAS ADDED WHOSE EXTREMITIES SATISFIED OUR CURRENT CHECKS
-            # IT MIGHT STILL OVERLAP WITH A EXISTING ROOM
-            if room.conflictsWith(protoroom) or protoroom.conflictsWith(room) :
+            if protoroom.conflictsWith(room) or room.conflictsWith(protoroom):
                 safe = False
+                t -= 1
                 break
-        
         if safe :
             genotype.append(protoroom)
-
-
-    # NOTE : a certain allowance for overlapping square rooms could lead to more interesting shapes/rooms
-    # t = tolerance
-    # while t > 0 :
-    #     x_dim = math.floor(random.randrange(10, 20))
-    #     y_dim = math.floor(random.randrange(10, 20))
-    #     x_corner = math.floor(random.randrange(1, int(WIN_WIDTH / TILE_SIZE) - x_dim))
-    #     y_corner = math.floor(random.randrange(1, int(WIN_HEIGHT / TILE_SIZE) - y_dim))
-    #     protoroom = Room((x_corner, y_corner), (x_dim, y_dim))
-    #     safe = True
-    #     for room in genotype :
-    #         if protoroom.conflictsWith(room) :
-    #             safe = False
-    #             t -= 1
-    #             break
-    #     if safe :
-    #         genotype.append(protoroom)
     
     print(len(genotype))
     return genotype
@@ -172,7 +150,7 @@ def outputPhenotype(genotype : list) :
 
 # MAIN GAME LOOP =====================================
 
-gene = generateGenotype(20)
+gene = generateGenotype(5000)
 phenotype = outputPhenotype(gene)
 
 while playing:
