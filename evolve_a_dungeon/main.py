@@ -18,14 +18,14 @@ WIN_HEIGHT = 600    # 120 tiles down
 WIN_SCALE = 2
 TILE_SIZE = 5
 
-mac = True
+mac = False
 if mac : WIN_SCALE = 1
 
 # ASSETS =====================================
 
-i_tile = pygame.image.load('./tile.png')
-i_dirt = pygame.image.load('./dirt.png')
-i_debug = pygame.image.load('./debug.png')
+i_tile = pygame.image.load('../res/tile.png')
+i_dirt = pygame.image.load('../res/dirt.png')
+i_debug = pygame.image.load('../res/debug.png')
 
 # HELPER DATA =====================================
 
