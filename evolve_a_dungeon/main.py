@@ -18,7 +18,7 @@ WIN_HEIGHT = 600    # 120 tiles down
 WIN_SCALE = 2
 TILE_SIZE = 5
 
-mac = False
+mac = True
 if mac : WIN_SCALE = 1
 
 # ASSETS =====================================
@@ -150,7 +150,7 @@ def outputPhenotype(genotype : list) :
 
 # MAIN GAME LOOP =====================================
 
-gene = generateGenotype(5000)
+gene = generateGenotype(50)
 phenotype = outputPhenotype(gene)
 
 while playing:
