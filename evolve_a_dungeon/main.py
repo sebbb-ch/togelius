@@ -94,8 +94,6 @@ class Room() :
             return True
         return False
 
-
-
 # this is the "first level of translation" - we convert our notion of a room, and put it into code
 # in this case, a top-left corner and a pair of dimensions are our notion of a room, and are easily put into code.
 # tolerance - parameter to determine how many failed attempts at placing rooms are allowed before terminating loop
