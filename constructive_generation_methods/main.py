@@ -43,9 +43,10 @@ class Room() :
 
     # given the self as the root node, return a list of the list of leaf nodes obtained from
     # applying a BSP to it
-    def bsp(self, depth) -> list:
+    def bsp(self) -> list:
         # 1) set current node as a BSP node
         # 2) if it can be partitioned, split it and repeat
+            # depth should be hardcoded in as opposed to a parameter
         # 3) if not, return a flag saying so
         pass
 
